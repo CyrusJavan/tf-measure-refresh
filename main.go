@@ -29,6 +29,9 @@ func main() {
 	if _, err := os.Stat("terraform.tfstate"); err != nil {
 		log.Fatalf("could not find terraform.tfstate file in current dir: %v", err)
 	}
+	if _, err := exec.LookPath("jq"); err != nil {
+		log.Fatal("jq must be in your PATH")
+	}
 
 	log.Printf("=> Measuring Refresh Time for all %s resources\n", os.Args[1])
 	log.Println("=> Making Temp Dir")

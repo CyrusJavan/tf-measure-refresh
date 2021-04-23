@@ -90,18 +90,23 @@ func main() {
 		log.Fatalf("writing temp config: %v", err)
 	}
 
-	log.Println("=> Running terraform refresh and measuring execution time")
-	c = exec.Command("terraform", "refresh")
-	c.Dir = dir
-	c.Stderr = os.Stderr
-	c.Stdout = os.Stdout
-	start := time.Now()
-	err = c.Run()
-	end := time.Now()
-	if err != nil {
-		log.Fatalf("running terraform refresh: %v", err)
+	log.Println("=> Running terraform refresh 5 times and measuring average execution time")
+	runs := 5
+	var sum int64
+	for i := 0; i < runs; i++ {
+		c = exec.Command("terraform", "refresh")
+		c.Dir = dir
+		c.Stderr = os.Stderr
+		c.Stdout = os.Stdout
+		start := time.Now()
+		err = c.Run()
+		end := time.Now()
+		if err != nil {
+			log.Fatalf("running terraform refresh: %v", err)
+		}
+		total := end.Sub(start)
+		sum += total.Milliseconds()
 	}
-
-	total := end.Sub(start)
-	log.Println("=> Total time to refresh:", total)
+	avg := sum / int64(runs)
+	log.Println("=> Total time to refresh:", float64(avg)/1000.0)
 }

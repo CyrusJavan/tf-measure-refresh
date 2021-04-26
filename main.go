@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -22,18 +23,28 @@ terraform {
 }
 `
 
+var runs int
+
+func init() {
+	flag.IntVar(&runs, "runs", 1, "how many terraform refresh runs to measure to get the average time")
+}
+
 func main() {
-	if len(os.Args) != 2 {
+	flag.Parse()
+	if len(flag.Args()) != 1 {
 		log.Fatal("measureRefresh takes a single argument")
 	}
 	if _, err := os.Stat("terraform.tfstate"); err != nil {
 		log.Fatalf("could not find terraform.tfstate file in current dir: %v", err)
 	}
+	if matches, _ := filepath.Glob("*.tf"); len(matches) == 0 {
+		log.Fatal("no *.tf files found in the current directory")
+	}
 	if _, err := exec.LookPath("jq"); err != nil {
 		log.Fatal("jq must be in your PATH")
 	}
 
-	log.Printf("=> Measuring Refresh Time for all %s resources\n", os.Args[1])
+	log.Printf("=> Measuring Refresh Time for all %s resources\n", flag.Arg(0))
 	log.Println("=> Making Temp Dir")
 	dir, err := os.MkdirTemp("", "measureRefresh")
 	if err != nil {
@@ -44,7 +55,7 @@ func main() {
 
 	log.Println("=> Using jq to get resources from tfstate")
 	jqArgs := []string{
-		fmt.Sprintf("del(.resources[] | select(.type != %q))", os.Args[1]),
+		fmt.Sprintf("del(.resources[] | select(.type != %q))", flag.Arg(0)),
 		"terraform.tfstate",
 	}
 	jq := exec.Command("jq", jqArgs...)
@@ -90,8 +101,7 @@ func main() {
 		log.Fatalf("writing temp config: %v", err)
 	}
 
-	log.Println("=> Running terraform refresh 5 times and measuring average execution time")
-	runs := 5
+	log.Printf("=> Running terraform refresh %d times and measuring average execution time", runs)
 	var sum int64
 	for i := 0; i < runs; i++ {
 		c = exec.Command("terraform", "refresh")
